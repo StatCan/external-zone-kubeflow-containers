@@ -1,0 +1,6 @@
+docker
+pytest
+recommonmark
+requests==2.31.0
+tabulate
+six

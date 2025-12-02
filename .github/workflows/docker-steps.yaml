@@ -1,0 +1,109 @@
+name: organizes the steps taken to build, upload, and test the images
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: Image name
+        required: true
+        type: string
+      directory:
+        description: The directory of the image files
+        required: true
+        type: string
+      parent-image:
+        description: Parent image name
+        required: false
+        type: string
+      parent-image-is-diff:
+        description: Parent image has been changed?
+        required: false
+        type: string
+        default: "false"
+      base-image:
+        description: The base image to build from if not located on our own repo
+        required: false
+        type: string
+      registry-name:
+        description: url of the registry <registy-name>
+        required: true
+        type: string
+      branch-name:
+        description: The name of the current branch 
+        required: true
+        type: string
+    secrets:
+      REGISTRY_USERNAME:
+        description: The username for the container registry
+        required: true
+      REGISTRY_PASSWORD:
+        description: The password for the container registry
+        required: true
+      SAS_SA_NAME:
+        description: The name of the SAS storage account
+        required: false
+      SAS_SA_KEY_1:
+        description: The access key to the SAS storage account
+        required: false
+    outputs:
+      is-diff:
+        description: Is there a difference between the master branch and the current branch
+        value: ${{ jobs.check-diff.outputs.is-diff }}
+
+jobs:
+  check-diff:
+    uses: ./.github/workflows/check-diff.yaml
+    with:
+      directory: ${{ inputs.directory }}
+      parent-image-is-diff: ${{ inputs.parent-image-is-diff }}
+      branch-name: ${{ inputs.branch-name }}
+
+  set-and-print-variables:
+    needs: [check-diff]
+    runs-on: ubuntu-latest
+    outputs:
+      base-image: ${{ steps.set-base.outputs.base-image }}
+    steps:
+      - name: print inputs
+        run: echo "${{ toJSON(inputs) }}"
+      - name: print check-diff
+        run: echo "${{ toJSON(needs.check-diff) }}"
+      - name: set BASE_IMAGE env
+        id: set-base
+        # if base image is given, then it is from upstream
+        # otherwise, set the base image to use our registry
+        run: |
+          if [ "${{ inputs.base-image }}" != "" ]; then
+            echo "BASE_IMAGE=${{ inputs.base-image }}"
+            echo "base-image=${{ inputs.base-image }}" >> $GITHUB_OUTPUT
+          else
+            echo "BASE_IMAGE=${{ inputs.registry-name }}/${{ inputs.parent-image }}:${{ inputs.branch-name }}"
+            echo "base-image=${{ inputs.registry-name }}/${{ inputs.parent-image }}:${{ inputs.branch-name }}" >> $GITHUB_OUTPUT
+          fi
+
+  build-upload:
+    needs: [check-diff, set-and-print-variables]
+    if: ${{ needs.check-diff.outputs.is-diff == 'true' }}
+    uses: ./.github/workflows/docker-build-upload.yaml
+    with:
+      directory: ${{ inputs.directory }}
+      image: ${{ inputs.image }}
+      base-image: ${{ needs.set-and-print-variables.outputs.base-image }}
+      registry-name: ${{ inputs.registry-name }}
+      branch-name: ${{ inputs.branch-name }}
+    secrets:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      SAS_SA_NAME: ${{ secrets.SAS_SA_NAME }}
+      SAS_SA_KEY_1: ${{ secrets.SAS_SA_KEY_1 }}
+
+  pull-upload:
+    needs: [check-diff]
+    if: ${{ needs.check-diff.outputs.is-diff == 'false' }}
+    uses: ./.github/workflows/docker-pull-upload.yaml
+    with:
+      image: ${{ inputs.image }}
+      registry-name: ${{ inputs.registry-name }}
+    secrets:
+      REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
