@@ -3,15 +3,10 @@ on:
   push:
     branches:
       - "master"
-      - "beta"
     paths:
-      - ".github/workflows/*"
+      - "**"
+      - "!**/*.md"
 
-      - "images/**"
-      - "!images/*/README.md"
-      - "tests/**"
-      - "!tests/README.md"
-      - "requirements-dev.txt"
   pull_request:
     paths:
       - ".github/workflows/*"
