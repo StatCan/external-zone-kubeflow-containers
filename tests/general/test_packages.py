@@ -53,6 +53,7 @@ PACKAGE_MAPPING = {
     "spylon-kernel": "spylon_kernel",
     "pillow": "PIL",
     "pytables": "tables",
+    "sqlite": "sqlite3",
     "pyyaml": "yaml",
     "jupyterhub-singleuser": "jupyterhub.singleuser",
     # R
