@@ -6,6 +6,9 @@ FROM $BASE_IMAGE
 
 USER root
 
+# Install the openM++ proxy
+RUN pip install /opt/jupyter-ompp-proxy
+
 # Install AMD AOCL
 ARG AOCL_VERSION=4.0
 ENV AOCL_PATH=/opt/amd/aocl/${AOCL_VERSION}
