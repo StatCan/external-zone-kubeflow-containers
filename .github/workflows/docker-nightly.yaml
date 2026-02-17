@@ -21,8 +21,7 @@ jobs:
     strategy:
       matrix:
         image:
-          - jupyterlab-cpu
-          - sas
+          - jupyterlab-ext
     uses: ./.github/workflows/docker-pull-test.yaml
     with:
       image: ${{ matrix.image }}
